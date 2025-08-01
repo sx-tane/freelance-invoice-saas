@@ -1,76 +1,102 @@
 import {
-  Body,
   Controller,
-  Delete,
   Get,
-  Param,
-  Patch,
   Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+  Query,
+  ParseUUIDPipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
-import { Invoice, InvoiceStatus } from './invoice.entity';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import { InvoiceFilterDto } from './dto/invoice-filter.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { InvoiceStatus } from './entities/invoice.entity';
 
 /**
  * InvoicesController defines endpoints for managing invoices.  It
  * supports CRUD operations as well as setting an invoice's status.
  */
 @Controller('invoices')
+@UseGuards(JwtAuthGuard)
 export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
-  /**
-   * List all invoices.
-   */
   @Get()
-  findAll(): Invoice[] {
-    return this.invoicesService.findAll();
+  findAll(@Request() req, @Query() filters: InvoiceFilterDto) {
+    return this.invoicesService.findAll(req.user.id, filters);
   }
 
-  /**
-   * Retrieve a single invoice by ID.
-   */
+  @Get('stats')
+  getInvoiceStats(@Request() req) {
+    return this.invoicesService.getInvoiceStats(req.user.id);
+  }
+
+  @Get('monthly-revenue/:year')
+  getMonthlyRevenue(
+    @Request() req,
+    @Param('year', ParseIntPipe) year: number,
+  ) {
+    return this.invoicesService.getMonthlyRevenue(req.user.id, year);
+  }
+
+  @Get('overdue')
+  getOverdueInvoices(@Request() req) {
+    return this.invoicesService.getOverdueInvoices(req.user.id);
+  }
+
   @Get(':id')
-  findOne(@Param('id') id: string): Invoice {
-    return this.invoicesService.findOne(Number(id));
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.invoicesService.findOne(id, req.user.id);
   }
 
-  /**
-   * Create a new invoice.  Requires clientId, amount and dueDate.
-   * The status is set to "draft" automatically.
-   */
   @Post()
-  create(@Body() body: Omit<Invoice, 'id' | 'status'>): Invoice {
-    return this.invoicesService.create(body);
+  create(@Body() createInvoiceDto: CreateInvoiceDto, @Request() req) {
+    return this.invoicesService.create(createInvoiceDto, req.user.id);
   }
 
-  /**
-   * Update an invoice.  Only provided fields are updated; the ID
-   * cannot be changed.
-   */
   @Patch(':id')
   update(
-    @Param('id') id: string,
-    @Body() updates: Partial<Omit<Invoice, 'id'>>,
-  ): Invoice {
-    return this.invoicesService.update(Number(id), updates);
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateInvoiceDto: UpdateInvoiceDto,
+    @Request() req,
+  ) {
+    return this.invoicesService.update(id, updateInvoiceDto, req.user.id);
   }
 
-  /**
-   * Delete an invoice by ID.
-   */
-  @Delete(':id')
-  remove(@Param('id') id: string): boolean {
-    return this.invoicesService.remove(Number(id));
-  }
-
-  /**
-   * Set the status of an invoice to one of draft, sent, paid or overdue.
-   */
   @Post(':id/status')
-  setStatus(
-    @Param('id') id: string,
+  updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
     @Body('status') status: InvoiceStatus,
-  ): Invoice {
-    return this.invoicesService.setStatus(Number(id), status);
+    @Request() req,
+  ) {
+    return this.invoicesService.updateStatus(id, status, req.user.id);
+  }
+
+  @Post(':id/send')
+  sendInvoice(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.invoicesService.updateStatus(id, InvoiceStatus.SENT, req.user.id);
+  }
+
+  @Post(':id/mark-paid')
+  markAsPaid(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.invoicesService.updateStatus(id, InvoiceStatus.PAID, req.user.id);
+  }
+
+  @Get(':id/view')
+  viewInvoice(@Param('id', ParseUUIDPipe) id: string) {
+    // This endpoint is for client viewing (no auth required)
+    return this.invoicesService.markAsViewed(id);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.invoicesService.remove(id, req.user.id);
   }
 }

@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # Development PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: invoice-postgres-dev
+    environment:
+      POSTGRES_DB: invoice_saas_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - invoice-dev-network
+
+  # Development Redis
+  redis:
+    image: redis:7-alpine
+    container_name: invoice-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - invoice-dev-network
+
+  # Backend Development
+  backend-dev:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: invoice-backend-dev
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/invoice_saas_dev
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-key
+      CORS_ORIGIN: http://localhost:3001
+    ports:
+      - "3002:3000"
+      - "9229:9229"  # Debug port
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/package.json:/app/package.json
+      - backend_node_modules:/app/node_modules
+    networks:
+      - invoice-dev-network
+    command: npm run start:debug
+
+  # Frontend Development
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: invoice-frontend-dev
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_API_URL: http://localhost:3002
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    networks:
+      - invoice-dev-network
+    command: npm run dev
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+  backend_node_modules:
+  frontend_node_modules:
+
+networks:
+  invoice-dev-network:
+    driver: bridge

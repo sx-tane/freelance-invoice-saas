@@ -16,6 +16,10 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "useUnknownInCatchVariables": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
     "plugins": [{ "name": "next" }]
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],

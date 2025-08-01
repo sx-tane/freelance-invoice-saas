@@ -1,136 +1,326 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Invoice, InvoiceStatus } from './invoice.entity';
-import { EmailService } from '../email/email.service';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, MoreThan, LessThan, Between } from 'typeorm';
+import { Invoice, InvoiceStatus } from './entities/invoice.entity';
+import { InvoiceItem } from './entities/invoice-item.entity';
+import { Subscription } from '../subscriptions/entities/subscription.entity';
+import { ClientsService } from '../clients/clients.service';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import { InvoiceFilterDto } from './dto/invoice-filter.dto';
 
 /**
- * InvoicesService maintains an in‑memory list of invoices.  It
- * provides CRUD operations and a helper to update an invoice's
- * status.  In a production system invoices would be persisted to a
- * database and more sophisticated validation would be performed.
+ * InvoicesService handles all invoice-related operations including CRUD,
+ * status management, tax calculations, and subscription limit checking.
  */
 @Injectable()
 export class InvoicesService {
-  private invoices: Invoice[] = [];
-  private nextId = 1;
+  constructor(
+    @InjectRepository(Invoice)
+    private invoicesRepository: Repository<Invoice>,
+    @InjectRepository(InvoiceItem)
+    private invoiceItemsRepository: Repository<InvoiceItem>,
+    @InjectRepository(Subscription)
+    private subscriptionsRepository: Repository<Subscription>,
+    private readonly clientsService: ClientsService,
+  ) {}
 
-  // Keep track of scheduled timers so they can be cancelled or re‑scheduled
-  private readonly reminderTimers: Map<number, NodeJS.Timeout[]> = new Map();
+  async findAll(userId: string, filters?: InvoiceFilterDto): Promise<Invoice[]> {
+    const query = this.invoicesRepository
+      .createQueryBuilder('invoice')
+      .leftJoinAndSelect('invoice.client', 'client')
+      .leftJoinAndSelect('invoice.items', 'items')
+      .where('invoice.userId = :userId', { userId })
+      .orderBy('invoice.createdAt', 'DESC');
 
-  constructor(private readonly emailService: EmailService) {}
+    if (filters?.status) {
+      query.andWhere('invoice.status = :status', { status: filters.status });
+    }
 
-  findAll(): Invoice[] {
-    return this.invoices;
+    if (filters?.clientId) {
+      query.andWhere('invoice.clientId = :clientId', { clientId: filters.clientId });
+    }
+
+    if (filters?.startDate && filters?.endDate) {
+      query.andWhere('invoice.issueDate BETWEEN :startDate AND :endDate', {
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+      });
+    }
+
+    return query.getMany();
   }
 
-  findOne(id: number): Invoice {
-    const invoice = this.invoices.find((i) => i.id === id);
+  async findOne(id: string, userId: string): Promise<Invoice> {
+    const invoice = await this.invoicesRepository.findOne({
+      where: { id, userId },
+      relations: ['client', 'items', 'payments'],
+    });
+
     if (!invoice) {
-      throw new NotFoundException(`Invoice with id ${id} not found`);
+      throw new NotFoundException(`Invoice with ID ${id} not found`);
     }
+
     return invoice;
   }
 
-  create(data: Omit<Invoice, 'id' | 'status'>): Invoice {
-    const invoice: Invoice = {
-      id: this.nextId++,
-      status: 'draft',
-      ...data,
-    };
-    this.invoices.push(invoice);
+  async create(createInvoiceDto: CreateInvoiceDto, userId: string): Promise<Invoice> {
+    // Check subscription limits
+    const subscription = await this.subscriptionsRepository.findOne({
+      where: { userId },
+    });
 
-    // Schedule reminder emails for this invoice
-    this.scheduleReminders(invoice);
-    return invoice;
-  }
-
-  update(id: number, updates: Partial<Omit<Invoice, 'id'>>): Invoice {
-    const invoice = this.findOne(id);
-    const oldDueDate = invoice.dueDate;
-    Object.assign(invoice, updates);
-    // If the due date has changed, re‑schedule reminders
-    if (updates.dueDate && updates.dueDate !== oldDueDate) {
-      this.cancelReminders(id);
-      this.scheduleReminders(invoice);
+    if (!subscription) {
+      throw new ForbiddenException('No active subscription found');
     }
-    return invoice;
-  }
 
-  remove(id: number): boolean {
-    const index = this.invoices.findIndex((i) => i.id === id);
-    if (index === -1) {
-      throw new NotFoundException(`Invoice with id ${id} not found`);
+    const currentInvoiceCount = await this.invoicesRepository.count({
+      where: { userId },
+    });
+
+    if (currentInvoiceCount >= subscription.invoiceLimit) {
+      throw new ForbiddenException(
+        `Invoice limit reached. Current plan allows ${subscription.invoiceLimit} invoices.`,
+      );
     }
-    this.invoices.splice(index, 1);
 
-    // Cancel any scheduled reminders for this invoice
-    this.cancelReminders(id);
-    return true;
+    // Verify client belongs to user
+    await this.clientsService.findOne(createInvoiceDto.clientId, userId);
+
+    // Calculate totals
+    const { subtotal, taxAmount, total } = this.calculateInvoiceTotals(
+      createInvoiceDto.items,
+      createInvoiceDto.taxRate || 0,
+      createInvoiceDto.discountAmount || 0,
+    );
+
+    // Create invoice
+    const invoice = this.invoicesRepository.create({
+      ...createInvoiceDto,
+      userId,
+      subtotal,
+      taxAmount,
+      total,
+      amountDue: total,
+    });
+
+    const savedInvoice = await this.invoicesRepository.save(invoice);
+
+    // Create invoice items
+    if (createInvoiceDto.items && createInvoiceDto.items.length > 0) {
+      const invoiceItems = createInvoiceDto.items.map((item, index) => 
+        this.invoiceItemsRepository.create({
+          ...item,
+          invoiceId: savedInvoice.id,
+          amount: item.quantity * item.rate,
+          sortOrder: index + 1,
+        })
+      );
+      await this.invoiceItemsRepository.save(invoiceItems);
+    }
+
+    // Update subscription counter
+    await this.subscriptionsRepository.update(
+      { userId },
+      { invoicesSent: subscription.invoicesSent + 1 },
+    );
+
+    return this.findOne(savedInvoice.id, userId);
   }
 
-  /**
-   * Change the status of an invoice.  Use this to mark an invoice as
-   * sent or paid, or to revert it to draft.
-   */
-  setStatus(id: number, status: InvoiceStatus): Invoice {
-    const invoice = this.findOne(id);
-    invoice.status = status;
-    return invoice;
+  async update(id: string, updateInvoiceDto: UpdateInvoiceDto, userId: string): Promise<Invoice> {
+    const invoice = await this.findOne(id, userId);
+
+    // Don't allow updates to paid invoices
+    if (invoice.status === InvoiceStatus.PAID) {
+      throw new ForbiddenException('Cannot update a paid invoice');
+    }
+
+    // If client is being changed, verify it belongs to user
+    if (updateInvoiceDto.clientId) {
+      await this.clientsService.findOne(updateInvoiceDto.clientId, userId);
+    }
+
+    // Update invoice items if provided
+    if (updateInvoiceDto.items) {
+      // Remove existing items
+      await this.invoiceItemsRepository.delete({ invoiceId: id });
+
+      // Add new items
+      const invoiceItems = updateInvoiceDto.items.map((item, index) =>
+        this.invoiceItemsRepository.create({
+          ...item,
+          invoiceId: id,
+          amount: item.quantity * item.rate,
+          sortOrder: index + 1,
+        })
+      );
+      await this.invoiceItemsRepository.save(invoiceItems);
+    }
+
+    // Recalculate totals if items or rates changed
+    const items = updateInvoiceDto.items || invoice.items;
+    const taxRate = updateInvoiceDto.taxRate ?? invoice.taxRate;
+    const discountAmount = updateInvoiceDto.discountAmount ?? invoice.discountAmount;
+
+    const { subtotal, taxAmount, total } = this.calculateInvoiceTotals(
+      items,
+      taxRate,
+      discountAmount,
+    );
+
+    // Update invoice
+    Object.assign(invoice, {
+      ...updateInvoiceDto,
+      subtotal,
+      taxAmount,
+      total,
+      amountDue: total - invoice.amountPaid,
+    });
+
+    return this.invoicesRepository.save(invoice);
   }
 
-  /**
-   * Schedule reminder emails before and after the due date.  The current
-   * implementation schedules two reminders: one three days before the due
-   * date, and one one day after the due date if the invoice is not
-   * marked as paid.  If the invoice is deleted or the due date changes,
-   * previously scheduled reminders are cancelled.
-   */
-  private scheduleReminders(invoice: Invoice): void {
-    const dueDate = new Date(invoice.dueDate);
+  async remove(id: string, userId: string): Promise<void> {
+    const invoice = await this.findOne(id, userId);
+    
+    // Don't allow deletion of paid invoices
+    if (invoice.status === InvoiceStatus.PAID) {
+      throw new ForbiddenException('Cannot delete a paid invoice');
+    }
+
+    await this.invoicesRepository.remove(invoice);
+  }
+
+  async updateStatus(id: string, status: InvoiceStatus, userId: string): Promise<Invoice> {
+    const invoice = await this.findOne(id, userId);
+    
     const now = new Date();
-    const timers: NodeJS.Timeout[] = [];
-
-    // Helper to schedule a reminder at a specific time offset
-    const schedule = (msUntil: number, type: 'before' | 'after') => {
-      if (msUntil <= 0) return;
-      const timer = setTimeout(async () => {
-        // Only send reminders if invoice is not yet paid
-        if (invoice.status !== 'paid') {
-          // For this prototype we don't have access to the client's email. In
-          // a real system, you would look up the client by invoice.clientId.
-          const recipient = `client-${invoice.clientId}@example.com`;
-          await this.emailService.sendInvoiceReminder(
-            recipient,
-            invoice.id,
-            invoice.dueDate,
-            type,
-          );
+    
+    // Update status-specific timestamps
+    switch (status) {
+      case InvoiceStatus.SENT:
+        invoice.sentAt = now;
+        break;
+      case InvoiceStatus.VIEWED:
+        if (!invoice.viewedAt) {
+          invoice.viewedAt = now;
         }
-      }, msUntil);
-      timers.push(timer);
-    };
+        break;
+      case InvoiceStatus.PAID:
+        invoice.paidAt = now;
+        invoice.amountDue = 0;
+        break;
+    }
 
-    // Three days (in ms) before the due date
-    const msBefore = dueDate.getTime() - now.getTime() - 3 * 24 * 60 * 60 * 1000;
-    schedule(msBefore, 'before');
-
-    // One day after the due date
-    const msAfter = dueDate.getTime() - now.getTime() + 1 * 24 * 60 * 60 * 1000;
-    schedule(msAfter, 'after');
-
-    this.reminderTimers.set(invoice.id, timers);
+    invoice.status = status;
+    return this.invoicesRepository.save(invoice);
   }
 
-  /**
-   * Cancel all scheduled reminders for an invoice.  Called when an
-   * invoice is deleted or its due date changes.
-   */
-  private cancelReminders(id: number): void {
-    const timers = this.reminderTimers.get(id);
-    if (timers) {
-      for (const timer of timers) {
-        clearTimeout(timer);
-      }
-      this.reminderTimers.delete(id);
+  async markAsViewed(id: string): Promise<Invoice> {
+    const invoice = await this.invoicesRepository.findOne({ where: { id } });
+    if (!invoice) {
+      throw new NotFoundException(`Invoice with ID ${id} not found`);
     }
+
+    if (!invoice.viewedAt) {
+      invoice.viewedAt = new Date();
+      if (invoice.status === InvoiceStatus.SENT) {
+        invoice.status = InvoiceStatus.VIEWED;
+      }
+      await this.invoicesRepository.save(invoice);
+    }
+
+    return invoice;
+  }
+
+  async getOverdueInvoices(userId: string): Promise<Invoice[]> {
+    const today = new Date();
+    return this.invoicesRepository.find({
+      where: {
+        userId,
+        status: InvoiceStatus.SENT,
+        dueDate: LessThan(today),
+      },
+      relations: ['client'],
+    });
+  }
+
+  async getInvoiceStats(userId: string) {
+    const stats = await this.invoicesRepository
+      .createQueryBuilder('invoice')
+      .select([
+        'COUNT(*) as totalInvoices',
+        'COUNT(CASE WHEN invoice.status = \'draft\' THEN 1 END) as draftInvoices',
+        'COUNT(CASE WHEN invoice.status = \'sent\' THEN 1 END) as sentInvoices',
+        'COUNT(CASE WHEN invoice.status = \'paid\' THEN 1 END) as paidInvoices',
+        'COUNT(CASE WHEN invoice.status = \'overdue\' THEN 1 END) as overdueInvoices',
+        'SUM(CASE WHEN invoice.status = \'paid\' THEN invoice.total ELSE 0 END) as totalRevenue',
+        'SUM(CASE WHEN invoice.status != \'paid\' THEN invoice.amountDue ELSE 0 END) as outstandingAmount',
+        'AVG(CASE WHEN invoice.status = \'paid\' THEN invoice.total END) as averageInvoiceValue',
+      ])
+      .where('invoice.userId = :userId', { userId })
+      .getRawOne();
+
+    return {
+      totalInvoices: parseInt(stats.totalInvoices) || 0,
+      draftInvoices: parseInt(stats.draftInvoices) || 0,
+      sentInvoices: parseInt(stats.sentInvoices) || 0,
+      paidInvoices: parseInt(stats.paidInvoices) || 0,
+      overdueInvoices: parseInt(stats.overdueInvoices) || 0,
+      totalRevenue: parseFloat(stats.totalRevenue) || 0,
+      outstandingAmount: parseFloat(stats.outstandingAmount) || 0,
+      averageInvoiceValue: parseFloat(stats.averageInvoiceValue) || 0,
+    };
+  }
+
+  async getMonthlyRevenue(userId: string, year: number) {
+    const monthlyData = await this.invoicesRepository
+      .createQueryBuilder('invoice')
+      .select([
+        'EXTRACT(MONTH FROM invoice.paidAt) as month',
+        'SUM(invoice.total) as revenue',
+        'COUNT(*) as invoiceCount',
+      ])
+      .where('invoice.userId = :userId', { userId })
+      .andWhere('invoice.status = :status', { status: InvoiceStatus.PAID })
+      .andWhere('EXTRACT(YEAR FROM invoice.paidAt) = :year', { year })
+      .groupBy('EXTRACT(MONTH FROM invoice.paidAt)')
+      .orderBy('month', 'ASC')
+      .getRawMany();
+
+    // Fill in missing months with zero values
+    const result = Array.from({ length: 12 }, (_, i) => ({
+      month: i + 1,
+      revenue: 0,
+      invoiceCount: 0,
+    }));
+
+    monthlyData.forEach((data) => {
+      const monthIndex = parseInt(data.month) - 1;
+      result[monthIndex] = {
+        month: parseInt(data.month),
+        revenue: parseFloat(data.revenue) || 0,
+        invoiceCount: parseInt(data.invoiceCount) || 0,
+      };
+    });
+
+    return result;
+  }
+
+  private calculateInvoiceTotals(
+    items: Array<{ quantity: number; rate: number }>,
+    taxRate: number,
+    discountAmount: number,
+  ) {
+    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+    const taxAmount = (subtotal - discountAmount) * (taxRate / 100);
+    const total = subtotal - discountAmount + taxAmount;
+
+    return {
+      subtotal: Number(subtotal.toFixed(2)),
+      taxAmount: Number(taxAmount.toFixed(2)),
+      total: Number(total.toFixed(2)),
+    };
   }
 }

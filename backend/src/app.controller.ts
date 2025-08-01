@@ -2,9 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 
 /**
- * Top‑level controller with a single health‑check endpoint.  This is
- * provided mainly for convenience while developing; it can be expanded
- * or removed in a production system.
+ * Top-level controller with health-check and system info endpoints.
  */
 @Controller()
 export class AppController {
@@ -13,5 +11,15 @@ export class AppController {
   @Get()
   getHello(): string {
     return this.appService.getHello();
+  }
+
+  @Get('health')
+  getHealth() {
+    return this.appService.getHealth();
+  }
+
+  @Get('version')
+  getVersion() {
+    return this.appService.getVersion();
   }
 }

@@ -1,56 +1,95 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+  Request,
+  ParseUUIDPipe,
+} from '@nestjs/common';
 import { ClientsService } from './clients.service';
-import { Client } from './client.entity';
+import { CreateClientDto } from './dto/create-client.dto';
+import { UpdateClientDto } from './dto/update-client.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 /**
  * ClientsController exposes REST endpoints for managing clients.  It
  * delegates business logic to the ClientsService.
  */
 @Controller('clients')
+@UseGuards(JwtAuthGuard)
 export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   /**
-   * List all clients.
+   * List all clients for the authenticated user.
    */
   @Get()
-  findAll(): Client[] {
-    return this.clientsService.findAll();
+  findAll(@Request() req) {
+    return this.clientsService.findAll(req.user.id);
   }
 
   /**
    * Retrieve a single client by ID.
    */
   @Get(':id')
-  findOne(@Param('id') id: string): Client {
-    return this.clientsService.findOne(Number(id));
+  findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.clientsService.findOne(id, req.user.id);
   }
 
   /**
-   * Create a new client.  The request body should include at least
+   * Get client statistics and metrics.
+   */
+  @Get(':id/stats')
+  getClientStats(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.clientsService.getClientStats(id, req.user.id);
+  }
+
+  /**
+   * Create a new client. The request body should include at least
    * name and email.
    */
   @Post()
-  create(@Body() body: Omit<Client, 'id'>): Client {
-    return this.clientsService.create(body);
+  create(@Body() createClientDto: CreateClientDto, @Request() req) {
+    return this.clientsService.create(createClientDto, req.user.id);
   }
 
   /**
-   * Update a client.  Only provided fields will be updated.
+   * Update a client. Only provided fields will be updated.
    */
   @Patch(':id')
   update(
-    @Param('id') id: string,
-    @Body() updates: Partial<Omit<Client, 'id'>>,
-  ): Client {
-    return this.clientsService.update(Number(id), updates);
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateClientDto: UpdateClientDto,
+    @Request() req,
+  ) {
+    return this.clientsService.update(id, updateClientDto, req.user.id);
+  }
+
+  /**
+   * Deactivate a client.
+   */
+  @Post(':id/deactivate')
+  deactivate(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.clientsService.deactivateClient(id, req.user.id);
+  }
+
+  /**
+   * Activate a client.
+   */
+  @Post(':id/activate')
+  activate(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.clientsService.activateClient(id, req.user.id);
   }
 
   /**
    * Delete a client.
    */
   @Delete(':id')
-  remove(@Param('id') id: string): boolean {
-    return this.clientsService.remove(Number(id));
+  remove(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+    return this.clientsService.remove(id, req.user.id);
   }
 }
