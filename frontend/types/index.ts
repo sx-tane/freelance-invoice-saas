@@ -1,7 +1,8 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   company?: string;
   avatar?: string;
   createdAt: string;
@@ -61,6 +62,7 @@ export interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 export interface ApiResponse<T> {

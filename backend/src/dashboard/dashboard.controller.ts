@@ -16,4 +16,24 @@ export class DashboardController {
   getOverview(@Request() req) {
     return this.dashboardService.getOverview(req.user.id);
   }
+
+  @Get('stats')
+  getStats(@Request() req) {
+    return this.dashboardService.getStats(req.user.id);
+  }
+
+  @Get('revenue')
+  getRevenue(@Request() req) {
+    return this.dashboardService.getRevenue(req.user.id);
+  }
+
+  @Get('invoice-status')
+  getInvoiceStatus(@Request() req) {
+    return this.dashboardService.getInvoiceStatus(req.user.id);
+  }
+
+  @Get('recent-activity')
+  getRecentActivity(@Request() req) {
+    return this.dashboardService.getRecentActivity(req.user.id);
+  }
 }

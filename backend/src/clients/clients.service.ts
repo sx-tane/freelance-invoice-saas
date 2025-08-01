@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { Client } from './entities/client.entity';
 import { Subscription } from '../subscriptions/entities/subscription.entity';
 import { CreateClientDto } from './dto/create-client.dto';
@@ -19,9 +19,15 @@ export class ClientsService {
     private subscriptionsRepository: Repository<Subscription>,
   ) {}
 
-  async findAll(userId: string): Promise<Client[]> {
+  async findAll(userId: string, search?: string): Promise<Client[]> {
+    const where: any = { userId };
+    
+    if (search) {
+      where.name = Like(`%${search}%`);
+    }
+    
     return this.clientsRepository.find({
-      where: { userId },
+      where,
       order: { createdAt: 'DESC' },
     });
   }

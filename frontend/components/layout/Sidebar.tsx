@@ -69,7 +69,7 @@ export function Sidebar() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-white truncate">
-                {user?.name || 'User'}
+                {user ? `${user.firstName} ${user.lastName}` : 'User'}
               </p>
               <p className="text-xs text-gray-400 truncate">
                 {user?.email}

@@ -52,56 +52,56 @@ export default function LoginPage() {
   };
 
   return (
-    <div className=\"min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8\">
-      <div className=\"max-w-md w-full space-y-8\">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className=\"mt-6 text-center text-3xl font-extrabold text-gray-900\">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Sign in to your account
           </h2>
-          <p className=\"mt-2 text-center text-sm text-gray-600\">
+          <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
-            <Link href=\"/auth/register\" className=\"font-medium text-primary-600 hover:text-primary-500\">
+            <Link href="/auth/register" className="font-medium text-primary-600 hover:text-primary-500">
               create a new account
             </Link>
           </p>
         </div>
         
-        <form className=\"mt-8 space-y-6\" onSubmit={handleSubmit(onSubmit)}>
-          <div className=\"space-y-4\">
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-4">
             <Input
-              label=\"Email address\"
-              type=\"email\"
-              autoComplete=\"email\"
+              label="Email address"
+              type="email"
+              autoComplete="email"
               {...register('email')}
               error={errors.email?.message}
-              placeholder=\"Enter your email\"
+              placeholder="Enter your email"
             />
             
             <Input
-              label=\"Password\"
-              type=\"password\"
-              autoComplete=\"current-password\"
+              label="Password"
+              type="password"
+              autoComplete="current-password"
               {...register('password')}
               error={errors.password?.message}
-              placeholder=\"Enter your password\"
+              placeholder="Enter your password"
             />
           </div>
 
-          <div className=\"flex items-center justify-between\">
-            <div className=\"flex items-center\">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
               <input
-                id=\"remember-me\"
-                name=\"remember-me\"
-                type=\"checkbox\"
-                className=\"h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded\"
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
               />
-              <label htmlFor=\"remember-me\" className=\"ml-2 block text-sm text-gray-900\">
+              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                 Remember me
               </label>
             </div>
 
-            <div className=\"text-sm\">
-              <Link href=\"#\" className=\"font-medium text-primary-600 hover:text-primary-500\">
+            <div className="text-sm">
+              <Link href="#" className="font-medium text-primary-600 hover:text-primary-500">
                 Forgot your password?
               </Link>
             </div>
@@ -109,10 +109,10 @@ export default function LoginPage() {
 
           <div>
             <Button
-              type=\"submit\"
+              type="submit"
               loading={isLoading}
-              className=\"w-full\"
-              size=\"lg\"
+              className="w-full"
+              size="lg"
             >
               Sign in
             </Button>

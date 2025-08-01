@@ -109,29 +109,29 @@ export function InvoiceForm({ invoice, clients, onSubmit, isLoading = false }: I
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className=\"space-y-6\">
-      <div className=\"grid grid-cols-1 md:grid-cols-2 gap-4\">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className=\"block text-sm font-medium text-gray-700 mb-1\">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Invoice Number
           </label>
           <input
-            type=\"text\"
+            type="text"
             value={invoiceNumber}
             disabled
-            className=\"input bg-gray-50\"
+            className="input bg-gray-50"
           />
         </div>
         
         <div>
-          <label className=\"block text-sm font-medium text-gray-700 mb-1\">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Client
           </label>
           <select
             {...register('clientId')}
-            className=\"input\"
+            className="input"
           >
-            <option value=\"\">Select a client</option>
+            <option value="">Select a client</option>
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
                 {client.name} {client.company && `(${client.company})`}
@@ -139,52 +139,52 @@ export function InvoiceForm({ invoice, clients, onSubmit, isLoading = false }: I
             ))}
           </select>
           {errors.clientId && (
-            <p className=\"text-sm text-red-600 mt-1\">{errors.clientId.message}</p>
+            <p className="text-sm text-red-600 mt-1">{errors.clientId.message}</p>
           )}
         </div>
       </div>
 
-      <div className=\"grid grid-cols-1 md:grid-cols-2 gap-4\">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Input
-          label=\"Issue Date\"
-          type=\"date\"
+          label="Issue Date"
+          type="date"
           {...register('issueDate')}
           error={errors.issueDate?.message}
         />
         
         <Input
-          label=\"Due Date\"
-          type=\"date\"
+          label="Due Date"
+          type="date"
           {...register('dueDate')}
           error={errors.dueDate?.message}
         />
       </div>
 
-      <div className=\"space-y-4\">
-        <div className=\"flex items-center justify-between\">
-          <h3 className=\"text-lg font-medium text-gray-900\">Items</h3>
-          <Button type=\"button\" variant=\"secondary\" size=\"sm\" onClick={addItem}>
-            <Plus className=\"h-4 w-4 mr-1\" />
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium text-gray-900">Items</h3>
+          <Button type="button" variant="secondary" size="sm" onClick={addItem}>
+            <Plus className="h-4 w-4 mr-1" />
             Add Item
           </Button>
         </div>
 
-        <div className=\"space-y-3\">
+        <div className="space-y-3">
           {fields.map((field, index) => (
-            <div key={field.id} className=\"grid grid-cols-12 gap-3 items-start p-4 border border-gray-200 rounded-lg\">
-              <div className=\"col-span-5\">
+            <div key={field.id} className="grid grid-cols-12 gap-3 items-start p-4 border border-gray-200 rounded-lg">
+              <div className="col-span-5">
                 <Input
-                  placeholder=\"Description\"
+                  placeholder="Description"
                   {...register(`items.${index}.description`)}
                   error={errors.items?.[index]?.description?.message}
                 />
               </div>
               
-              <div className=\"col-span-2\">
+              <div className="col-span-2">
                 <Input
-                  type=\"number\"
-                  placeholder=\"Qty\"
-                  step=\"0.01\"
+                  type="number"
+                  placeholder="Qty"
+                  step="0.01"
                   {...register(`items.${index}.quantity`, {
                     valueAsNumber: true,
                     onChange: (e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)
@@ -193,11 +193,11 @@ export function InvoiceForm({ invoice, clients, onSubmit, isLoading = false }: I
                 />
               </div>
               
-              <div className=\"col-span-2\">
+              <div className="col-span-2">
                 <Input
-                  type=\"number\"
-                  placeholder=\"Rate\"
-                  step=\"0.01\"
+                  type="number"
+                  placeholder="Rate"
+                  step="0.01"
                   {...register(`items.${index}.rate`, {
                     valueAsNumber: true,
                     onChange: (e) => handleItemChange(index, 'rate', parseFloat(e.target.value) || 0)
@@ -206,20 +206,20 @@ export function InvoiceForm({ invoice, clients, onSubmit, isLoading = false }: I
                 />
               </div>
               
-              <div className=\"col-span-2\">
-                <div className=\"input bg-gray-50 text-right\">
+              <div className="col-span-2">
+                <div className="input bg-gray-50 text-right">
                   {formatCurrency((watchedItems[index]?.quantity || 0) * (watchedItems[index]?.rate || 0))}
                 </div>
               </div>
               
-              <div className=\"col-span-1 flex justify-center\">
+              <div className="col-span-1 flex justify-center">
                 <button
-                  type=\"button\"
+                  type="button"
                   onClick={() => removeItem(index)}
                   disabled={fields.length === 1}
-                  className=\"p-2 text-gray-400 hover:text-red-600 disabled:opacity-50\"
+                  className="p-2 text-gray-400 hover:text-red-600 disabled:opacity-50"
                 >
-                  <Trash2 className=\"h-4 w-4\" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -227,25 +227,25 @@ export function InvoiceForm({ invoice, clients, onSubmit, isLoading = false }: I
         </div>
       </div>
 
-      <div className=\"border-t pt-4\">
-        <div className=\"flex justify-end\">
-          <div className=\"w-64 space-y-2\">
-            <div className=\"flex justify-between text-sm\">
-              <span className=\"text-gray-600\">Subtotal:</span>
-              <span className=\"font-medium\">{formatCurrency(calculateSubtotal())}</span>
+      <div className="border-t pt-4">
+        <div className="flex justify-end">
+          <div className="w-64 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Subtotal:</span>
+              <span className="font-medium">{formatCurrency(calculateSubtotal())}</span>
             </div>
             
-            <div className=\"flex justify-between items-center\">
-              <label className=\"text-sm text-gray-600\">Tax:</label>
+            <div className="flex justify-between items-center">
+              <label className="text-sm text-gray-600">Tax:</label>
               <Input
-                type=\"number\"
-                step=\"0.01\"
-                className=\"w-20 text-right\"
+                type="number"
+                step="0.01"
+                className="w-20 text-right"
                 {...register('tax', { valueAsNumber: true })}
               />
             </div>
             
-            <div className=\"flex justify-between text-lg font-semibold border-t pt-2\">
+            <div className="flex justify-between text-lg font-semibold border-t pt-2">
               <span>Total:</span>
               <span>{formatCurrency(calculateTotal())}</span>
             </div>
@@ -254,20 +254,20 @@ export function InvoiceForm({ invoice, clients, onSubmit, isLoading = false }: I
       </div>
 
       <div>
-        <label className=\"block text-sm font-medium text-gray-700 mb-1\">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Notes (Optional)
         </label>
         <textarea
           {...register('notes')}
           rows={3}
-          className=\"w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500\"
-          placeholder=\"Additional notes or payment terms...\"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          placeholder="Additional notes or payment terms..."
         />
       </div>
 
-      <div className=\"flex justify-end space-x-3 pt-4\">
+      <div className="flex justify-end space-x-3 pt-4">
         <Button
-          type=\"submit\"
+          type="submit"
           loading={isLoading}
         >
           {invoice ? 'Update Invoice' : 'Create Invoice'}

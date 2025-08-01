@@ -32,6 +32,11 @@ export class AiController {
   ) {}
 
   // Smart Invoice Features
+  @Post('parse-invoice')
+  async parseInvoice(@Body() data: { text: string }): Promise<InvoiceParseResult> {
+    return this.nlpService.parseInvoiceFromText(data.text);
+  }
+
   @Post('categorize-items')
   async categorizeItems(@Body() items: string[]): Promise<CategoryResult[]> {
     return this.invoiceAiService.categorizeItems(items);

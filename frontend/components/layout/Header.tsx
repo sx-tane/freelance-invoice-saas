@@ -32,11 +32,11 @@ export function Header() {
           <div className="flex items-center space-x-2">
             <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
               <span className="text-sm font-medium text-white">
-                {user?.name?.charAt(0) || 'U'}
+                {user ? user.firstName.charAt(0) : 'U'}
               </span>
             </div>
             <span className="text-sm font-medium text-gray-700">
-              {user?.name || 'User'}
+              {user ? `${user.firstName} ${user.lastName}` : 'User'}
             </span>
           </div>
         </div>

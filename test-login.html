@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Login Flow</title>
+</head>
+<body>
+    <h1>Test Login Flow</h1>
+    <div id="status">Loading...</div>
+    
+    <script>
+        async function testLogin() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                // Test login
+                const loginResponse = await fetch('http://localhost:3002/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'user2@example.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const loginData = await loginResponse.json();
+                statusDiv.innerHTML += '<p>✅ Login successful</p>';
+                
+                // Test /auth/me with token
+                const meResponse = await fetch('http://localhost:3002/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${loginData.access_token}`
+                    }
+                });
+                
+                if (meResponse.ok) {
+                    const userData = await meResponse.json();
+                    statusDiv.innerHTML += '<p>✅ /auth/me endpoint working</p>';
+                    statusDiv.innerHTML += `<p>User: ${userData.firstName} ${userData.lastName}</p>`;
+                    statusDiv.innerHTML += '<p>🎉 Authentication flow is working correctly!</p>';
+                } else {
+                    statusDiv.innerHTML += '<p>❌ /auth/me endpoint failed</p>';
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        testLogin();
+    </script>
+</body>
+</html>

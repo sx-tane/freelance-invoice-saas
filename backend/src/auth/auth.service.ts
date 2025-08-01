@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
@@ -103,5 +103,43 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return user;
+  }
+
+  async updateProfile(userId: string, updateData: any) {
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Remove sensitive fields that shouldn't be updated via this endpoint
+    const { password, isActive, role, ...safeUpdateData } = updateData;
+
+    const updatedUser = await this.usersService.update(userId, safeUpdateData);
+    
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
+  }
+
+  async changePassword(userId: string, changePasswordData: { currentPassword: string; newPassword: string }) {
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(changePasswordData.currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    // Hash new password
+    const saltRounds = 12;
+    const hashedNewPassword = await bcrypt.hash(changePasswordData.newPassword, saltRounds);
+
+    // Update password
+    await this.usersService.updatePassword(userId, hashedNewPassword);
+
+    return { message: 'Password changed successfully' };
   }
 }

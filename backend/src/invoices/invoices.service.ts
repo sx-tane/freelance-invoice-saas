@@ -255,6 +255,7 @@ export class InvoicesService {
         'COUNT(CASE WHEN invoice.status = \'sent\' THEN 1 END) as sentInvoices',
         'COUNT(CASE WHEN invoice.status = \'paid\' THEN 1 END) as paidInvoices',
         'COUNT(CASE WHEN invoice.status = \'overdue\' THEN 1 END) as overdueInvoices',
+        'COUNT(CASE WHEN invoice.status = \'cancelled\' THEN 1 END) as cancelledInvoices',
         'SUM(CASE WHEN invoice.status = \'paid\' THEN invoice.total ELSE 0 END) as totalRevenue',
         'SUM(CASE WHEN invoice.status != \'paid\' THEN invoice.amountDue ELSE 0 END) as outstandingAmount',
         'AVG(CASE WHEN invoice.status = \'paid\' THEN invoice.total END) as averageInvoiceValue',
@@ -262,15 +263,43 @@ export class InvoicesService {
       .where('invoice.userId = :userId', { userId })
       .getRawOne();
 
+    // Calculate monthly growth (simple calculation - current vs previous month)
+    const currentMonth = new Date();
+    const previousMonth = new Date();
+    previousMonth.setMonth(currentMonth.getMonth() - 1);
+    
+    const currentMonthRevenue = await this.invoicesRepository
+      .createQueryBuilder('invoice')
+      .select('SUM(invoice.total) as revenue')
+      .where('invoice.userId = :userId', { userId })
+      .andWhere('invoice.status = :status', { status: InvoiceStatus.PAID })
+      .andWhere('invoice.paidAt >= :startDate', { startDate: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1) })
+      .getRawOne();
+
+    const previousMonthRevenue = await this.invoicesRepository
+      .createQueryBuilder('invoice')
+      .select('SUM(invoice.total) as revenue')
+      .where('invoice.userId = :userId', { userId })
+      .andWhere('invoice.status = :status', { status: InvoiceStatus.PAID })
+      .andWhere('invoice.paidAt >= :startDate', { startDate: new Date(previousMonth.getFullYear(), previousMonth.getMonth(), 1) })
+      .andWhere('invoice.paidAt < :endDate', { endDate: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1) })
+      .getRawOne();
+
+    const currentRev = parseFloat(currentMonthRevenue.revenue) || 0;
+    const previousRev = parseFloat(previousMonthRevenue.revenue) || 0;
+    const monthlyGrowth = previousRev > 0 ? ((currentRev - previousRev) / previousRev) * 100 : 0;
+
     return {
       totalInvoices: parseInt(stats.totalInvoices) || 0,
       draftInvoices: parseInt(stats.draftInvoices) || 0,
       sentInvoices: parseInt(stats.sentInvoices) || 0,
       paidInvoices: parseInt(stats.paidInvoices) || 0,
       overdueInvoices: parseInt(stats.overdueInvoices) || 0,
+      cancelledInvoices: parseInt(stats.cancelledInvoices) || 0,
       totalRevenue: parseFloat(stats.totalRevenue) || 0,
       outstandingAmount: parseFloat(stats.outstandingAmount) || 0,
       averageInvoiceValue: parseFloat(stats.averageInvoiceValue) || 0,
+      monthlyGrowth: Number(monthlyGrowth.toFixed(2)),
     };
   }
 
@@ -306,6 +335,171 @@ export class InvoicesService {
     });
 
     return result;
+  }
+
+  async getRecentInvoices(userId: string, limit: number = 10): Promise<Invoice[]> {
+    return this.invoicesRepository.find({
+      where: { userId },
+      relations: ['client'],
+      order: { updatedAt: 'DESC' },
+      take: limit,
+    });
+  }
+
+  async generatePdf(id: string, userId: string): Promise<Buffer> {
+    const invoice = await this.findOne(id, userId);
+    
+    // Import puppeteer dynamically
+    const puppeteer = await import('puppeteer');
+    
+    const browser = await puppeteer.default.launch({ 
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    try {
+      const page = await browser.newPage();
+      
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Invoice ${invoice.invoiceNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+            .header { border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+            .invoice-title { font-size: 28px; color: #007bff; margin: 0; }
+            .invoice-number { font-size: 16px; color: #666; margin: 5px 0; }
+            .client-info, .invoice-details { margin: 20px 0; }
+            .client-info h3, .invoice-details h3 { margin-bottom: 10px; color: #007bff; }
+            .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .items-table th { background-color: #f8f9fa; font-weight: bold; }
+            .totals { float: right; width: 300px; margin-top: 20px; }
+            .totals table { width: 100%; }
+            .totals td { padding: 5px; border-bottom: 1px solid #eee; }
+            .total-final { font-weight: bold; font-size: 18px; border-top: 2px solid #007bff; }
+            .status { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+            .status.paid { background-color: #d4edda; color: #155724; }
+            .status.sent { background-color: #d1ecf1; color: #0c5460; }
+            .status.draft { background-color: #f8d7da; color: #721c24; }
+            .status.overdue { background-color: #fff3cd; color: #856404; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1 class="invoice-title">INVOICE</h1>
+            <div class="invoice-number">#${invoice.invoiceNumber}</div>
+            <div class="status ${invoice.status}">${invoice.status}</div>
+          </div>
+          
+          <div class="client-info">
+            <h3>Bill To:</h3>
+            <div><strong>${invoice.client?.name || 'N/A'}</strong></div>
+            ${invoice.client?.company ? `<div>${invoice.client.company}</div>` : ''}
+            <div>${invoice.client?.email || 'N/A'}</div>
+            ${invoice.client?.phone ? `<div>${invoice.client.phone}</div>` : ''}
+            ${invoice.client?.address ? `<div>${invoice.client.address}</div>` : ''}
+          </div>
+          
+          <div class="invoice-details">
+            <h3>Invoice Details:</h3>
+            <div><strong>Issue Date:</strong> ${new Date(invoice.issueDate).toLocaleDateString()}</div>
+            <div><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</div>
+            <div><strong>Currency:</strong> ${invoice.currency}</div>
+          </div>
+          
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th>Quantity</th>
+                <th>Rate</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${invoice.items?.map(item => `
+                <tr>
+                  <td>${item.description}</td>
+                  <td>${item.quantity}</td>
+                  <td>$${Number(item.rate).toFixed(2)}</td>
+                  <td>$${Number(item.amount).toFixed(2)}</td>
+                </tr>
+              `).join('') || '<tr><td colspan="4">No items</td></tr>'}
+            </tbody>
+          </table>
+          
+          <div class="totals">
+            <table>
+              <tr>
+                <td>Subtotal:</td>
+                <td>$${Number(invoice.subtotal).toFixed(2)}</td>
+              </tr>
+              ${Number(invoice.discountAmount) > 0 ? `
+              <tr>
+                <td>Discount:</td>
+                <td>-$${Number(invoice.discountAmount).toFixed(2)}</td>
+              </tr>
+              ` : ''}
+              ${Number(invoice.taxRate) > 0 ? `
+              <tr>
+                <td>Tax (${Number(invoice.taxRate).toFixed(1)}%):</td>
+                <td>$${Number(invoice.taxAmount).toFixed(2)}</td>
+              </tr>
+              ` : ''}
+              <tr class="total-final">
+                <td>Total:</td>
+                <td>$${Number(invoice.total).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td>Amount Paid:</td>
+                <td>$${Number(invoice.amountPaid).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td><strong>Amount Due:</strong></td>
+                <td><strong>$${Number(invoice.amountDue).toFixed(2)}</strong></td>
+              </tr>
+            </table>
+          </div>
+          
+          <div style="clear: both; margin-top: 40px;">
+            ${invoice.notes ? `
+            <div>
+              <h3>Notes:</h3>
+              <p>${invoice.notes}</p>
+            </div>
+            ` : ''}
+            
+            ${invoice.terms ? `
+            <div>
+              <h3>Terms & Conditions:</h3>
+              <p>${invoice.terms}</p>
+            </div>
+            ` : ''}
+          </div>
+        </body>
+        </html>
+      `;
+      
+      await page.setContent(htmlContent);
+      
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20px',
+          right: '20px',
+          bottom: '20px',
+          left: '20px'
+        }
+      });
+      
+      return Buffer.from(pdfBuffer);
+    } finally {
+      await browser.close();
+    }
   }
 
   private calculateInvoiceTotals(

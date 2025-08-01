@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
 import { Wand2, DollarSign, MessageSquare, Sparkles, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '@/lib/api';
 
 interface SmartInvoiceFormProps {
   onSubmit: (data: any) => void;
@@ -42,22 +43,15 @@ export default function SmartInvoiceForm({ onSubmit, clientId }: SmartInvoiceFor
 
     try {
       setIsLoading(true);
-      // Mock AI response for now
-      const mockResponse = {
-        confidence: 0.8,
-        description: 'Website development and deployment services',
-        amount: 2500,
-        items: [
-          { description: 'Frontend development', quantity: 1, rate: 1500 },
-          { description: 'Backend API setup', quantity: 1, rate: 1000 }
-        ]
-      };
+      // Make actual API call to AI invoice parsing endpoint
+      const response = await api.post('/ai/parse-invoice', { message: chatMessage });
+      const data = response.data;
       
-      if (mockResponse.confidence > 0.6) {
-        if (mockResponse.description) setValue('description', mockResponse.description);
-        if (mockResponse.amount) setValue('amount', mockResponse.amount);
-        if (mockResponse.items && mockResponse.items.length > 0) {
-          setValue('items', mockResponse.items);
+      if (data.confidence > 0.6) {
+        if (data.description) setValue('description', data.description);
+        if (data.amount) setValue('amount', data.amount);
+        if (data.items && data.items.length > 0) {
+          setValue('items', data.items);
         }
         
         toast.success('Invoice details extracted from your message!');
@@ -79,13 +73,13 @@ export default function SmartInvoiceForm({ onSubmit, clientId }: SmartInvoiceFor
 
     try {
       setIsLoading(true);
-      // Mock categorization
-      const categories = items.map((item, index) => ({
-        category: index % 2 === 0 ? 'Development' : 'Consulting',
-        confidence: 0.85
-      }));
+      // Make actual API call to AI categorization endpoint
+      const response = await api.post('/ai/categorize-items', { 
+        items: items.map(item => item.description) 
+      });
+      const data = response.data;
       
-      const newSuggestions: AISuggestion[] = categories.map((cat: any, index: number) => ({
+      const newSuggestions: AISuggestion[] = data.categories.map((cat: any, index: number) => ({
         type: 'categorization' as const,
         content: `${items[index].description} → ${cat.category}`,
         confidence: cat.confidence,
@@ -111,9 +105,10 @@ export default function SmartInvoiceForm({ onSubmit, clientId }: SmartInvoiceFor
 
     try {
       setIsLoading(true);
-      // Mock description generation
-      const description = `Professional ${projectDetails.toLowerCase()} services delivered with high quality standards and attention to detail.`;
-      setValue('description', description);
+      // Make actual API call to AI description generation endpoint
+      const response = await api.post('/ai/generate-description', { items: projectDetails });
+      const data = response.data;
+      setValue('description', data.description);
       
       toast.success('Professional description generated!');
     } catch (error) {
@@ -129,17 +124,13 @@ export default function SmartInvoiceForm({ onSubmit, clientId }: SmartInvoiceFor
 
     try {
       setIsLoading(true);
-      // Mock pricing suggestion
-      const suggestion = {
-        suggestedPrice: 2500,
-        confidence: 0.8,
-        reasoning: 'Based on similar development projects'
-      };
+      // Make actual API call to AI pricing suggestion endpoint
+      const response = await api.post('/ai/suggest-pricing', { description });
+      const data = response.data;
+      setPricingSuggestion(data);
       
-      setPricingSuggestion(suggestion);
-      
-      if (suggestion.confidence > 0.7) {
-        toast.success(`AI suggests $${suggestion.suggestedPrice} based on similar work`);
+      if (data.confidence > 0.7) {
+        toast.success(`AI suggests $${data.suggestedPrice} based on similar work`);
       }
     } catch (error) {
       console.error('Error getting pricing suggestion:', error);

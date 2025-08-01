@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Complete Authentication Flow Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-step { margin: 10px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .pending { background-color: #fff3cd; border-color: #ffeeba; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Complete Authentication Flow Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        class AuthTester {
+            constructor() {
+                this.results = document.getElementById('results');
+                this.testData = {
+                    firstName: 'Test',
+                    lastName: 'User',
+                    email: 'testuser' + Date.now() + '@example.com',
+                    password: 'password123'
+                };
+            }
+            
+            log(step, message, status = 'pending') {
+                const div = document.createElement('div');
+                div.className = `test-step ${status}`;
+                div.innerHTML = `<strong>Step ${step}:</strong> ${message}`;
+                this.results.appendChild(div);
+                return div;
+            }
+            
+            updateStep(element, message, status) {
+                element.className = `test-step ${status}`;
+                element.innerHTML = `${element.innerHTML.split('</strong>')[0]}</strong> ${message}`;
+            }
+            
+            async runCompleteTest() {
+                let step = 1;
+                
+                // Step 1: Test Registration
+                const regStep = this.log(step++, 'Testing user registration...', 'pending');
+                try {
+                    const registerResponse = await fetch('http://localhost:3002/api/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.testData)
+                    });
+                    
+                    if (registerResponse.ok) {
+                        const regData = await registerResponse.json();
+                        this.updateStep(regStep, `✅ Registration successful for ${regData.email}`, 'success');
+                    } else {
+                        const errorData = await registerResponse.json();
+                        throw new Error(errorData.message || 'Registration failed');
+                    }
+                } catch (error) {
+                    this.updateStep(regStep, `❌ Registration failed: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Step 2: Test Login
+                const loginStep = this.log(step++, 'Testing user login...', 'pending');
+                let accessToken;
+                try {
+                    const loginResponse = await fetch('http://localhost:3002/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: this.testData.email,
+                            password: this.testData.password
+                        })
+                    });
+                    
+                    if (loginResponse.ok) {
+                        const loginData = await loginResponse.json();
+                        accessToken = loginData.access_token;
+                        this.updateStep(loginStep, `✅ Login successful, token received`, 'success');
+                    } else {
+                        const errorData = await loginResponse.json();
+                        throw new Error(errorData.message || 'Login failed');
+                    }
+                } catch (error) {
+                    this.updateStep(loginStep, `❌ Login failed: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Step 3: Test /auth/me endpoint
+                const meStep = this.log(step++, 'Testing /auth/me endpoint...', 'pending');
+                try {
+                    const meResponse = await fetch('http://localhost:3002/api/auth/me', {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    
+                    if (meResponse.ok) {
+                        const userData = await meResponse.json();
+                        this.updateStep(meStep, `✅ Auth check successful for ${userData.firstName} ${userData.lastName}`, 'success');
+                    } else {
+                        throw new Error('Auth check failed');
+                    }
+                } catch (error) {
+                    this.updateStep(meStep, `❌ Auth check failed: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Step 4: Test Frontend Accessibility
+                const frontendStep = this.log(step++, 'Testing frontend accessibility...', 'pending');
+                try {
+                    const frontendResponse = await fetch('http://localhost:3001');
+                    if (frontendResponse.ok) {
+                        this.updateStep(frontendStep, `✅ Frontend is accessible at http://localhost:3001`, 'success');
+                    } else {
+                        throw new Error('Frontend not accessible');
+                    }
+                } catch (error) {
+                    this.updateStep(frontendStep, `❌ Frontend test failed: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Step 5: Test Registration Page
+                const regPageStep = this.log(step++, 'Testing registration page...', 'pending');
+                try {
+                    const regPageResponse = await fetch('http://localhost:3001/auth/register');
+                    if (regPageResponse.ok) {
+                        this.updateStep(regPageStep, `✅ Registration page loads correctly`, 'success');
+                    } else {
+                        throw new Error('Registration page not accessible');
+                    }
+                } catch (error) {
+                    this.updateStep(regPageStep, `❌ Registration page test failed: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Step 6: Test Login Page
+                const loginPageStep = this.log(step++, 'Testing login page...', 'pending');
+                try {
+                    const loginPageResponse = await fetch('http://localhost:3001/auth/login');
+                    if (loginPageResponse.ok) {
+                        this.updateStep(loginPageStep, `✅ Login page loads correctly`, 'success');
+                    } else {
+                        throw new Error('Login page not accessible');
+                    }
+                } catch (error) {
+                    this.updateStep(loginPageStep, `❌ Login page test failed: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Final Success Message
+                const finalStep = this.log(step++, '🎉 ALL TESTS PASSED! The authentication flow is working correctly!', 'success');
+                finalStep.innerHTML += '<br><br><strong>What works:</strong><ul>' +
+                    '<li>✅ Backend API on port 3002</li>' +
+                    '<li>✅ Frontend on port 3001</li>' +
+                    '<li>✅ User registration with firstName/lastName</li>' +
+                    '<li>✅ User login with JWT tokens</li>' +
+                    '<li>✅ Auth verification endpoint (/auth/me)</li>' +
+                    '<li>✅ All pages load correctly</li>' +
+                    '<li>✅ API integration between frontend and backend</li>' +
+                    '</ul><br><strong>🚀 Ready for user testing!</strong>';
+            }
+        }
+        
+        // Run the test
+        const tester = new AuthTester();
+        tester.runCompleteTest();
+    </script>
+</body>
+</html>

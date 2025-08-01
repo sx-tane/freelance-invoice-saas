@@ -1,6 +1,8 @@
 import { 
   Controller, 
   Post, 
+  Get,
+  Put,
   Body, 
   UseGuards, 
   Request,
@@ -30,6 +32,12 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMe(@Request() req) {
+    return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('profile')
   getProfile(@Request() req) {
     return req.user;
@@ -42,5 +50,21 @@ export class AuthController {
     // In a JWT stateless system, logout is handled client-side
     // by removing the token from storage
     return { message: 'Logged out successfully' };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('profile')
+  async updateProfile(@Request() req, @Body() updateData: any) {
+    return this.authService.updateProfile(req.user.id, updateData);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Request() req, 
+    @Body() changePasswordData: { currentPassword: string; newPassword: string }
+  ) {
+    return this.authService.changePassword(req.user.id, changePasswordData);
   }
 }

@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Patch,
+  Put,
   Param,
   Delete,
   UseGuards,
@@ -11,7 +12,9 @@ import {
   Query,
   ParseUUIDPipe,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -70,6 +73,15 @@ export class InvoicesController {
     return this.invoicesService.update(id, updateInvoiceDto, req.user.id);
   }
 
+  @Put(':id')
+  updatePut(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateInvoiceDto: UpdateInvoiceDto,
+    @Request() req,
+  ) {
+    return this.invoicesService.update(id, updateInvoiceDto, req.user.id);
+  }
+
   @Post(':id/status')
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
@@ -93,6 +105,19 @@ export class InvoicesController {
   viewInvoice(@Param('id', ParseUUIDPipe) id: string) {
     // This endpoint is for client viewing (no auth required)
     return this.invoicesService.markAsViewed(id);
+  }
+
+  @Get(':id/pdf')
+  async generatePdf(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.invoicesService.generatePdf(id, req.user.id);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="invoice-${id}.pdf"`);
+    res.send(pdfBuffer);
   }
 
   @Delete(':id')

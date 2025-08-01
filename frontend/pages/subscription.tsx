@@ -115,80 +115,80 @@ export default function SubscriptionPage() {
 
   return (
     <Layout>
-      <div className=\"space-y-8\">
+      <div className="space-y-8">
         <div>
-          <h1 className=\"text-2xl font-bold text-gray-900\">Subscription</h1>
-          <p className=\"text-gray-600\">Manage your subscription and billing information</p>
+          <h1 className="text-2xl font-bold text-gray-900">Subscription</h1>
+          <p className="text-gray-600">Manage your subscription and billing information</p>
         </div>
 
         {/* Current Plan */}
         <Card>
-          <div className=\"mb-6\">
-            <h2 className=\"text-lg font-semibold text-gray-900\">Current Plan</h2>
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Current Plan</h2>
           </div>
           
-          <div className=\"flex items-center justify-between p-4 bg-primary-50 rounded-lg\">
+          <div className="flex items-center justify-between p-4 bg-primary-50 rounded-lg">
             <div>
-              <h3 className=\"text-lg font-semibold text-gray-900\">{currentPlan.name}</h3>
-              <p className=\"text-sm text-gray-600\">
+              <h3 className="text-lg font-semibold text-gray-900">{currentPlan.name}</h3>
+              <p className="text-sm text-gray-600">
                 Next billing date: {new Date(currentPlan.nextBillingDate).toLocaleDateString()}
               </p>
             </div>
-            <div className=\"text-right\">
-              <p className=\"text-2xl font-bold text-gray-900\">${currentPlan.amount}</p>
-              <p className=\"text-sm text-gray-600\">per month</p>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-gray-900">${currentPlan.amount}</p>
+              <p className="text-sm text-gray-600">per month</p>
             </div>
           </div>
         </Card>
 
         {/* Usage Stats */}
         <Card>
-          <div className=\"mb-6\">
-            <h2 className=\"text-lg font-semibold text-gray-900\">Usage</h2>
-            <p className=\"text-sm text-gray-600\">Your current usage for this billing period</p>
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Usage</h2>
+            <p className="text-sm text-gray-600">Your current usage for this billing period</p>
           </div>
 
-          <div className=\"grid grid-cols-1 md:grid-cols-3 gap-6\">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <div className=\"flex items-center justify-between mb-2\">
-                <span className=\"text-sm font-medium text-gray-700\">Clients</span>
-                <span className=\"text-sm text-gray-500\">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Clients</span>
+                <span className="text-sm text-gray-500">
                   {usageStats.clients.used} / {usageStats.clients.limit}
                 </span>
               </div>
-              <div className=\"w-full bg-gray-200 rounded-full h-2\">
+              <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className=\"bg-primary-600 h-2 rounded-full\" 
+                  className="bg-primary-600 h-2 rounded-full" 
                   style={{ width: usageStats.clients.limit === 'unlimited' ? '20%' : '80%' }}
                 ></div>
               </div>
             </div>
 
             <div>
-              <div className=\"flex items-center justify-between mb-2\">
-                <span className=\"text-sm font-medium text-gray-700\">Invoices</span>
-                <span className=\"text-sm text-gray-500\">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Invoices</span>
+                <span className="text-sm text-gray-500">
                   {usageStats.invoices.used} / {usageStats.invoices.limit}
                 </span>
               </div>
-              <div className=\"w-full bg-gray-200 rounded-full h-2\">
+              <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className=\"bg-primary-600 h-2 rounded-full\" 
+                  className="bg-primary-600 h-2 rounded-full" 
                   style={{ width: usageStats.invoices.limit === 'unlimited' ? '15%' : '70%' }}
                 ></div>
               </div>
             </div>
 
             <div>
-              <div className=\"flex items-center justify-between mb-2\">
-                <span className=\"text-sm font-medium text-gray-700\">Storage</span>
-                <span className=\"text-sm text-gray-500\">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Storage</span>
+                <span className="text-sm text-gray-500">
                   {usageStats.storage.used} / {usageStats.storage.limit} {usageStats.storage.unit}
                 </span>
               </div>
-              <div className=\"w-full bg-gray-200 rounded-full h-2\">
+              <div className="w-full bg-gray-200 rounded-full h-2">
                 <div 
-                  className=\"bg-primary-600 h-2 rounded-full\" 
+                  className="bg-primary-600 h-2 rounded-full" 
                   style={{ width: `${(usageStats.storage.used / usageStats.storage.limit) * 100}%` }}
                 ></div>
               </div>
@@ -198,9 +198,9 @@ export default function SubscriptionPage() {
 
         {/* Available Plans */}
         <div>
-          <h2 className=\"text-lg font-semibold text-gray-900 mb-6\">Available Plans</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Available Plans</h2>
           
-          <div className=\"grid grid-cols-1 md:grid-cols-3 gap-6\">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map((plan) => (
               <Card 
                 key={plan.id} 
@@ -208,29 +208,29 @@ export default function SubscriptionPage() {
                 padding={false}
               >
                 {plan.popular && (
-                  <div className=\"absolute -top-3 left-1/2 transform -translate-x-1/2\">
-                    <span className=\"inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-600 text-white\">
-                      <Star className=\"h-3 w-3 mr-1\" />
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-600 text-white">
+                      <Star className="h-3 w-3 mr-1" />
                       Most Popular
                     </span>
                   </div>
                 )}
                 
-                <div className=\"p-6\">
-                  <div className=\"text-center mb-6\">
-                    <h3 className=\"text-xl font-semibold text-gray-900\">{plan.name}</h3>
-                    <p className=\"text-sm text-gray-600 mt-1\">{plan.description}</p>
-                    <div className=\"mt-4\">
-                      <span className=\"text-4xl font-bold text-gray-900\">${plan.price}</span>
-                      <span className=\"text-sm text-gray-600\">/{plan.interval}</span>
+                <div className="p-6">
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900">{plan.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{plan.description}</p>
+                    <div className="mt-4">
+                      <span className="text-4xl font-bold text-gray-900">${plan.price}</span>
+                      <span className="text-sm text-gray-600">/{plan.interval}</span>
                     </div>
                   </div>
 
-                  <ul className=\"space-y-3 mb-6\">
+                  <ul className="space-y-3 mb-6">
                     {plan.features.map((feature, index) => (
-                      <li key={index} className=\"flex items-start\">
-                        <Check className=\"h-4 w-4 text-green-500 mt-0.5 mr-3 flex-shrink-0\" />
-                        <span className=\"text-sm text-gray-700\">{feature}</span>
+                      <li key={index} className="flex items-start">
+                        <Check className="h-4 w-4 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                        <span className="text-sm text-gray-700">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -238,7 +238,7 @@ export default function SubscriptionPage() {
                   <Button
                     onClick={() => handlePlanChange(plan.id)}
                     variant={plan.id === currentPlan.id ? 'secondary' : 'primary'}
-                    className=\"w-full\"
+                    className="w-full"
                     loading={isLoading && selectedPlan === plan.id}
                     disabled={plan.id === currentPlan.id}
                   >
@@ -252,30 +252,30 @@ export default function SubscriptionPage() {
 
         {/* Billing Information */}
         <Card>
-          <div className=\"mb-6\">
-            <h2 className=\"text-lg font-semibold text-gray-900\">Billing Information</h2>
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Billing Information</h2>
           </div>
 
-          <div className=\"flex items-center justify-between p-4 border border-gray-200 rounded-lg mb-4\">
-            <div className=\"flex items-center\">
-              <CreditCard className=\"h-8 w-8 text-gray-400 mr-3\" />
+          <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg mb-4">
+            <div className="flex items-center">
+              <CreditCard className="h-8 w-8 text-gray-400 mr-3" />
               <div>
-                <p className=\"font-medium text-gray-900\">•••• •••• •••• 4242</p>
-                <p className=\"text-sm text-gray-600\">Expires 12/25</p>
+                <p className="font-medium text-gray-900">•••• •••• •••• 4242</p>
+                <p className="text-sm text-gray-600">Expires 12/25</p>
               </div>
             </div>
-            <Button variant=\"secondary\" size=\"sm\">
+            <Button variant="secondary" size="sm">
               Update
             </Button>
           </div>
 
-          <div className=\"text-sm text-gray-600 mb-4\">
+          <div className="text-sm text-gray-600 mb-4">
             <p>Your next payment of <strong>${currentPlan.amount}</strong> will be charged on <strong>{new Date(currentPlan.nextBillingDate).toLocaleDateString()}</strong></p>
           </div>
 
-          <div className=\"border-t pt-4\">
+          <div className="border-t pt-4">
             <Button
-              variant=\"danger\"
+              variant="danger"
               onClick={handleCancelSubscription}
               loading={isLoading}
             >
@@ -286,12 +286,12 @@ export default function SubscriptionPage() {
 
         {/* Billing History */}
         <Card>
-          <div className=\"mb-6\">
-            <h2 className=\"text-lg font-semibold text-gray-900\">Billing History</h2>
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Billing History</h2>
           </div>
 
-          <div className=\"overflow-x-auto\">
-            <table className=\"table\">
+          <div className="overflow-x-auto">
+            <table className="table">
               <thead>
                 <tr>
                   <th>Date</th>
@@ -307,12 +307,12 @@ export default function SubscriptionPage() {
                   <td>Professional Plan - Monthly</td>
                   <td>$29.00</td>
                   <td>
-                    <span className=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800\">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       Paid
                     </span>
                   </td>
                   <td>
-                    <Button variant=\"ghost\" size=\"sm\">
+                    <Button variant="ghost" size="sm">
                       Download
                     </Button>
                   </td>
@@ -322,12 +322,12 @@ export default function SubscriptionPage() {
                   <td>Professional Plan - Monthly</td>
                   <td>$29.00</td>
                   <td>
-                    <span className=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800\">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       Paid
                     </span>
                   </td>
                   <td>
-                    <Button variant=\"ghost\" size=\"sm\">
+                    <Button variant="ghost" size="sm">
                       Download
                     </Button>
                   </td>
@@ -337,12 +337,12 @@ export default function SubscriptionPage() {
                   <td>Professional Plan - Monthly</td>
                   <td>$29.00</td>
                   <td>
-                    <span className=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800\">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       Paid
                     </span>
                   </td>
                   <td>
-                    <Button variant=\"ghost\" size=\"sm\">
+                    <Button variant="ghost" size="sm">
                       Download
                     </Button>
                   </td>

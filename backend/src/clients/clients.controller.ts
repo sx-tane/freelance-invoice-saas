@@ -6,6 +6,8 @@ import {
   Param,
   Patch,
   Post,
+  Put,
+  Query,
   UseGuards,
   Request,
   ParseUUIDPipe,
@@ -25,11 +27,11 @@ export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   /**
-   * List all clients for the authenticated user.
+   * List all clients for the authenticated user with optional search.
    */
   @Get()
-  findAll(@Request() req) {
-    return this.clientsService.findAll(req.user.id);
+  findAll(@Request() req, @Query('search') search?: string) {
+    return this.clientsService.findAll(req.user.id, search);
   }
 
   /**
@@ -62,6 +64,18 @@ export class ClientsController {
    */
   @Patch(':id')
   update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateClientDto: UpdateClientDto,
+    @Request() req,
+  ) {
+    return this.clientsService.update(id, updateClientDto, req.user.id);
+  }
+
+  /**
+   * Update a client (PUT method for frontend compatibility).
+   */
+  @Put(':id')
+  updatePut(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateClientDto: UpdateClientDto,
     @Request() req,

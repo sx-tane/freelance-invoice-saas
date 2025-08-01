@@ -11,7 +11,8 @@ import { useAuthStore } from '@/store/auth';
 import { useAuth } from '@/hooks/useAuth';
 
 const schema = yup.object({
-  name: yup.string().required('Name is required'),
+  firstName: yup.string().required('First name is required'),
+  lastName: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   password: yup.string().min(6, 'Password must be at least 6 characters').required('Password is required'),
   confirmPassword: yup.string()
@@ -20,7 +21,8 @@ const schema = yup.object({
 });
 
 interface RegisterForm {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -43,7 +45,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     try {
-      const success = await registerUser(data.name, data.email, data.password);
+      const success = await registerUser(data.firstName, data.lastName, data.email, data.password);
       if (success) {
         toast.success('Account created successfully!');
         router.push('/dashboard');
@@ -58,76 +60,84 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className=\"min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8\">
-      <div className=\"max-w-md w-full space-y-8\">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
         <div>
-          <h2 className=\"mt-6 text-center text-3xl font-extrabold text-gray-900\">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
-          <p className=\"mt-2 text-center text-sm text-gray-600\">
+          <p className="mt-2 text-center text-sm text-gray-600">
             Or{' '}
-            <Link href=\"/auth/login\" className=\"font-medium text-primary-600 hover:text-primary-500\">
+            <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
               sign in to your existing account
             </Link>
           </p>
         </div>
         
-        <form className=\"mt-8 space-y-6\" onSubmit={handleSubmit(onSubmit)}>
-          <div className=\"space-y-4\">
-            <Input
-              label=\"Full name\"
-              {...register('name')}
-              error={errors.name?.message}
-              placeholder=\"Enter your full name\"
-            />
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="First name"
+                {...register('firstName')}
+                error={errors.firstName?.message}
+                placeholder="Enter your first name"
+              />
+              <Input
+                label="Last name"
+                {...register('lastName')}
+                error={errors.lastName?.message}
+                placeholder="Enter your last name"
+              />
+            </div>
             
             <Input
-              label=\"Email address\"
-              type=\"email\"
-              autoComplete=\"email\"
+              label="Email address"
+              type="email"
+              autoComplete="email"
               {...register('email')}
               error={errors.email?.message}
-              placeholder=\"Enter your email\"
+              placeholder="Enter your email"
             />
             
             <Input
-              label=\"Password\"
-              type=\"password\"
-              autoComplete=\"new-password\"
+              label="Password"
+              type="password"
+              autoComplete="new-password"
               {...register('password')}
               error={errors.password?.message}
-              placeholder=\"Create a password\"
+              placeholder="Create a password"
             />
             
             <Input
-              label=\"Confirm password\"
-              type=\"password\"
-              autoComplete=\"new-password\"
+              label="Confirm password"
+              type="password"
+              autoComplete="new-password"
               {...register('confirmPassword')}
               error={errors.confirmPassword?.message}
-              placeholder=\"Confirm your password\"
+              placeholder="Confirm your password"
             />
           </div>
 
           <div>
             <Button
-              type=\"submit\"
+              type="submit"
               loading={isLoading}
-              className=\"w-full\"
-              size=\"lg\"
+              className="w-full"
+              size="lg"
             >
               Create account
             </Button>
           </div>
           
-          <div className=\"text-center\">
-            <p className=\"text-xs text-gray-500\">
+          <div className="text-center">
+            <p className="text-xs text-gray-500">
               By creating an account, you agree to our{' '}
-              <Link href=\"#\" className=\"font-medium text-primary-600 hover:text-primary-500\">
+              <Link href="#" className="font-medium text-primary-600 hover:text-primary-500">
                 Terms of Service
               </Link>{' '}
               and{' '}
-              <Link href=\"#\" className=\"font-medium text-primary-600 hover:text-primary-500\">
+              <Link href="#" className="font-medium text-primary-600 hover:text-primary-500">
                 Privacy Policy
               </Link>
             </p>

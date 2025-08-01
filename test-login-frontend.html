@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Frontend Authentication Flow</title>
+</head>
+<body>
+    <h1>Test Frontend Authentication Flow</h1>
+    <div id="status">Loading...</div>
+    
+    <script>
+        async function testFrontendAuth() {
+            const statusDiv = document.getElementById('status');
+            
+            try {
+                // Test registration first
+                statusDiv.innerHTML = '<p>🔄 Testing registration...</p>';
+                
+                const registerResponse = await fetch('http://localhost:3002/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        firstName: 'Test',
+                        lastName: 'User',
+                        email: 'testuser' + Date.now() + '@example.com',
+                        password: 'password123'
+                    })
+                });
+                
+                if (registerResponse.ok) {
+                    const registerData = await registerResponse.json();
+                    statusDiv.innerHTML += '<p>✅ Registration successful</p>';
+                    
+                    // Test login
+                    statusDiv.innerHTML += '<p>🔄 Testing login...</p>';
+                    const loginResponse = await fetch('http://localhost:3002/api/auth/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: registerData.email,
+                            password: 'password123'
+                        })
+                    });
+                    
+                    if (loginResponse.ok) {
+                        const loginData = await loginResponse.json();
+                        statusDiv.innerHTML += '<p>✅ Login successful</p>';
+                        
+                        // Test /auth/me with token
+                        statusDiv.innerHTML += '<p>🔄 Testing /auth/me endpoint...</p>';
+                        const meResponse = await fetch('http://localhost:3002/api/auth/me', {
+                            headers: {
+                                'Authorization': `Bearer ${loginData.access_token}`
+                            }
+                        });
+                        
+                        if (meResponse.ok) {
+                            const userData = await meResponse.json();
+                            statusDiv.innerHTML += '<p>✅ /auth/me endpoint working</p>';
+                            statusDiv.innerHTML += `<p>User: ${userData.firstName} ${userData.lastName}</p>`;
+                            statusDiv.innerHTML += '<p>🎉 Full authentication flow is working correctly!</p>';
+                            statusDiv.innerHTML += '<p>✨ You can now test the frontend at <a href="http://localhost:3001" target="_blank">http://localhost:3001</a></p>';
+                        } else {
+                            statusDiv.innerHTML += '<p>❌ /auth/me endpoint failed</p>';
+                        }
+                    } else {
+                        statusDiv.innerHTML += '<p>❌ Login failed</p>';
+                    }
+                } else {
+                    statusDiv.innerHTML += '<p>❌ Registration failed</p>';
+                }
+                
+            } catch (error) {
+                statusDiv.innerHTML += `<p>❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        testFrontendAuth();
+    </script>
+</body>
+</html>

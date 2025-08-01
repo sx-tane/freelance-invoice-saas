@@ -17,76 +17,6 @@ import { InvoiceEmptyState, SearchEmptyState } from '@/components/ui/EmptyState'
 import { Celebration, useCelebration } from '@/components/ui/Celebration';
 import { EasterEggProvider } from '@/components/ui/EasterEggs';
 
-// Mock data for demonstration
-const mockInvoices: Invoice[] = [
-  {
-    id: '1',
-    invoiceNumber: 'INV-2024-001',
-    clientId: '1',
-    client: {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@example.com',
-      company: 'Acme Corp',
-      createdAt: '2024-01-15T10:00:00Z',
-      updatedAt: '2024-01-15T10:00:00Z',
-    },
-    issueDate: '2024-01-15T10:00:00Z',
-    dueDate: '2024-02-15T10:00:00Z',
-    status: 'sent',
-    items: [
-      { id: '1', description: 'Web Development', quantity: 40, rate: 100, amount: 4000 },
-    ],
-    subtotal: 4000,
-    tax: 400,
-    total: 4400,
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    invoiceNumber: 'INV-2024-002',
-    clientId: '2',
-    client: {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane@techsolutions.com',
-      company: 'Tech Solutions Inc',
-      createdAt: '2024-01-10T14:30:00Z',
-      updatedAt: '2024-01-10T14:30:00Z',
-    },
-    issueDate: '2024-01-10T14:30:00Z',
-    dueDate: '2024-02-10T14:30:00Z',
-    status: 'paid',
-    items: [
-      { id: '2', description: 'UI/UX Design', quantity: 20, rate: 75, amount: 1500 },
-    ],
-    subtotal: 1500,
-    tax: 150,
-    total: 1650,
-    createdAt: '2024-01-10T14:30:00Z',
-    updatedAt: '2024-01-10T14:30:00Z',
-  },
-];
-
-const mockClients: Client[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    company: 'Acme Corp',
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@techsolutions.com',
-    company: 'Tech Solutions Inc',
-    createdAt: '2024-01-10T14:30:00Z',
-    updatedAt: '2024-01-10T14:30:00Z',
-  },
-];
 
 interface InvoiceFormData {
   clientId: string;
@@ -110,41 +40,32 @@ export default function InvoicesPage() {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const queryClient = useQueryClient();
 
-  // Mock queries - replace with actual API calls
-  const { data: invoices = mockInvoices, isLoading: invoicesLoading } = useQuery({
+  // Fetch invoices with search and filter functionality
+  const { data: invoices, isLoading: invoicesLoading } = useQuery({
     queryKey: ['invoices', searchTerm, statusFilter],
     queryFn: async () => {
-      return mockInvoices.filter(invoice => {
-        const matchesSearch = invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          invoice.client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (invoice.client?.company && invoice.client.company.toLowerCase().includes(searchTerm.toLowerCase()));
-        const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter;
-        return matchesSearch && matchesStatus;
-      });
+      const params: Record<string, string> = {};
+      if (searchTerm) params.search = searchTerm;
+      if (statusFilter !== 'all') params.status = statusFilter;
+      
+      const response = await api.get('/invoices', { params });
+      return response.data;
     },
   });
 
-  const { data: clients = mockClients } = useQuery({
+  // Fetch clients for invoice creation
+  const { data: clients } = useQuery({
     queryKey: ['clients'],
     queryFn: async () => {
-      return mockClients;
+      const response = await api.get('/clients');
+      return response.data;
     },
   });
 
   const createInvoiceMutation = useMutation({
     mutationFn: async (data: InvoiceFormData) => {
-      // const response = await api.post('/invoices', data);
-      // return response.data;
-      return {
-        ...data,
-        id: Date.now().toString(),
-        invoiceNumber: `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-3)}`,
-        subtotal: data.items.reduce((sum, item) => sum + item.amount, 0),
-        total: data.items.reduce((sum, item) => sum + item.amount, 0) + data.tax,
-        status: 'draft' as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      const response = await api.post('/invoices', data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -158,9 +79,8 @@ export default function InvoicesPage() {
 
   const updateInvoiceMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InvoiceFormData }) => {
-      // const response = await api.put(`/invoices/${id}`, data);
-      // return response.data;
-      return { ...data, id, updatedAt: new Date().toISOString() };
+      const response = await api.put(`/invoices/${id}`, data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -175,7 +95,7 @@ export default function InvoicesPage() {
 
   const deleteInvoiceMutation = useMutation({
     mutationFn: async (id: string) => {
-      // await api.delete(`/invoices/${id}`);
+      await api.delete(`/invoices/${id}`);
       return id;
     },
     onSuccess: () => {
@@ -207,12 +127,45 @@ export default function InvoicesPage() {
     }
   };
 
+  const sendInvoiceMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await api.post(`/invoices/${id}/send`);
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      const invoice = invoices?.find(inv => inv.id === variables);
+      toast.success(`Invoice ${invoice?.invoiceNumber} sent successfully!`);
+    },
+    onError: () => {
+      toast.error('Failed to send invoice');
+    },
+  });
+
   const handleSendInvoice = async (invoice: Invoice) => {
-    toast.success(`Invoice ${invoice.invoiceNumber} sent successfully!`);
+    sendInvoiceMutation.mutate(invoice.id);
   };
 
   const handleDownloadInvoice = async (invoice: Invoice) => {
-    toast.success(`Invoice ${invoice.invoiceNumber} downloaded!`);
+    try {
+      const response = await api.get(`/invoices/${invoice.id}/pdf`, {
+        responseType: 'blob',
+      });
+      
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`Invoice ${invoice.invoiceNumber} downloaded!`);
+    } catch (error) {
+      toast.error('Failed to download invoice');
+    }
   };
 
   const handleSubmit = (data: InvoiceFormData) => {
@@ -287,7 +240,7 @@ export default function InvoicesPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice) => (
+                {invoices && invoices.length > 0 && invoices.map((invoice) => (
                   <tr key={invoice.id}>
                     <td className="font-medium">{invoice.invoiceNumber}</td>
                     <td>
@@ -344,7 +297,7 @@ export default function InvoicesPage() {
             </table>
           </div>
 
-          {invoices.length === 0 && (
+          {(!invoices || invoices.length === 0) && (
             <div className="py-8">
               {searchTerm || statusFilter !== 'all' ? (
                 <SearchEmptyState

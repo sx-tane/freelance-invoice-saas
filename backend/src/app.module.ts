@@ -13,6 +13,8 @@ import { PaymentsModule } from './payments/payments.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { AiModule } from './ai/ai.module';
+import { SearchModule } from './search/search.module';
+import { HealthModule } from './health/health.module';
 
 /**
  * Root module for the application.  It imports feature modules for clients,
@@ -53,6 +55,8 @@ import { AiModule } from './ai/ai.module';
     SubscriptionsModule,
     DashboardModule,
     AiModule,
+    SearchModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

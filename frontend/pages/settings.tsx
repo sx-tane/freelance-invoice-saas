@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/store/auth';
+import api from '@/lib/api';
 
 const profileSchema = yup.object({
-  name: yup.string().required('Name is required'),
+  firstName: yup.string().required('First name is required'),
+  lastName: yup.string().required('Last name is required'),
   email: yup.string().email('Invalid email').required('Email is required'),
   company: yup.string(),
   phone: yup.string(),
@@ -27,7 +29,8 @@ const passwordSchema = yup.object({
 });
 
 interface ProfileFormData {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   company?: string;
   phone?: string;
@@ -53,7 +56,8 @@ export default function SettingsPage() {
   } = useForm<ProfileFormData>({
     resolver: yupResolver(profileSchema),
     defaultValues: {
-      name: user?.name || '',
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
       email: user?.email || '',
       company: user?.company || '',
     },
@@ -71,9 +75,8 @@ export default function SettingsPage() {
   const onProfileSubmit = async (data: ProfileFormData) => {
     setIsProfileLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      updateUser(data);
+      const response = await api.put('/auth/profile', data);
+      updateUser(response.data);
       toast.success('Profile updated successfully');
     } catch (error) {
       toast.error('Failed to update profile');
@@ -85,8 +88,10 @@ export default function SettingsPage() {
   const onPasswordSubmit = async (data: PasswordFormData) => {
     setIsPasswordLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await api.put('/auth/change-password', {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
       toast.success('Password updated successfully');
       resetPasswordForm();
     } catch (error) {
@@ -113,12 +118,20 @@ export default function SettingsPage() {
             </div>
 
             <form onSubmit={handleProfileSubmit(onProfileSubmit)} className="space-y-4">
-              <Input
-                label="Full Name"
-                {...registerProfile('name')}
-                error={profileErrors.name?.message}
-                placeholder="Your full name"
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="First Name"
+                  {...registerProfile('firstName')}
+                  error={profileErrors.firstName?.message}
+                  placeholder="Your first name"
+                />
+                <Input
+                  label="Last Name"
+                  {...registerProfile('lastName')}
+                  error={profileErrors.lastName?.message}
+                  placeholder="Your last name"
+                />
+              </div>
 
               <Input
                 label="Email Address"

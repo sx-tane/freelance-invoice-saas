@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, FileText, User, CreditCard, Sparkles, X } from 'lucide-react';
+import api from '@/lib/api';
 
 interface SearchResult {
   type: 'invoice' | 'client' | 'payment';
@@ -58,38 +59,9 @@ export default function SmartSearch({
   const performSearch = async (searchQuery: string) => {
     try {
       setIsLoading(true);
-      // Mock search results for now
-      const mockResults: SearchResult[] = [
-        {
-          type: 'invoice' as const,
-          id: 1,
-          title: 'Invoice #INV-2025-001',
-          description: 'Web development services for Tech Corp - $2,500',
-          relevanceScore: 0.95,
-          matchedTerms: [searchQuery.toLowerCase()]
-        },
-        {
-          type: 'client' as const,
-          id: 1,
-          title: 'Tech Corp',
-          description: 'Technology consulting company - 5 active projects',
-          relevanceScore: 0.88,
-          matchedTerms: [searchQuery.toLowerCase()]
-        },
-        {
-          type: 'payment' as const,
-          id: 1,
-          title: 'Payment received',
-          description: '$1,000 payment from Tech Corp - Wire transfer',
-          relevanceScore: 0.76,
-          matchedTerms: [searchQuery.toLowerCase()]
-        }
-      ].filter(result => 
-        result.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        result.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      
-      setResults(mockResults);
+      // Make actual API call to search endpoint
+      const response = await api.post('/search', { query: searchQuery });
+      setResults(response.data);
       setIsOpen(true);
       setSelectedIndex(-1);
     } catch (error) {

@@ -13,38 +13,6 @@ import { debounce } from '@/lib/utils';
 import api from '@/lib/api';
 import { Client } from '@/types';
 
-// Mock data for demonstration
-const mockClients: Client[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    company: 'Acme Corp',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main St, New York, NY 10001',
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@techsolutions.com',
-    company: 'Tech Solutions Inc',
-    phone: '+1 (555) 987-6543',
-    address: '456 Oak Ave, San Francisco, CA 94102',
-    createdAt: '2024-01-10T14:30:00Z',
-    updatedAt: '2024-01-10T14:30:00Z',
-  },
-  {
-    id: '3',
-    name: 'Mike Johnson',
-    email: 'mike@startup.co',
-    company: 'Startup Co',
-    phone: '+1 (555) 456-7890',
-    createdAt: '2024-01-05T09:15:00Z',
-    updatedAt: '2024-01-05T09:15:00Z',
-  },
-];
 
 interface ClientFormData {
   name: string;
@@ -61,25 +29,19 @@ export default function ClientsPage() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const queryClient = useQueryClient();
 
-  // Mock query - replace with actual API call
-  const { data: clients = mockClients, isLoading } = useQuery({
+  // Fetch clients with search functionality
+  const { data: clients, isLoading } = useQuery({
     queryKey: ['clients', searchTerm],
     queryFn: async () => {
-      // const response = await api.get('/clients', { params: { search: searchTerm } });
-      // return response.data;
-      return mockClients.filter(client => 
-        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (client.company && client.company.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      const response = await api.get('/clients', { params: { search: searchTerm } });
+      return response.data;
     },
   });
 
   const createClientMutation = useMutation({
     mutationFn: async (data: ClientFormData) => {
-      // const response = await api.post('/clients', data);
-      // return response.data;
-      return { ...data, id: Date.now().toString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      const response = await api.post('/clients', data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -93,9 +55,8 @@ export default function ClientsPage() {
 
   const updateClientMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: ClientFormData }) => {
-      // const response = await api.put(`/clients/${id}`, data);
-      // return response.data;
-      return { ...data, id, updatedAt: new Date().toISOString() };
+      const response = await api.put(`/clients/${id}`, data);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
@@ -110,7 +71,7 @@ export default function ClientsPage() {
 
   const deleteClientMutation = useMutation({
     mutationFn: async (id: string) => {
-      // await api.delete(`/clients/${id}`);
+      await api.delete(`/clients/${id}`);
       return id;
     },
     onSuccess: () => {
@@ -189,7 +150,7 @@ export default function ClientsPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {clients.map((client) => (
+            {clients && clients.length > 0 && clients.map((client) => (
               <div
                 key={client.id}
                 className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
@@ -239,7 +200,7 @@ export default function ClientsPage() {
             ))}
           </div>
 
-          {clients.length === 0 && (
+          {(!clients || clients.length === 0) && (
             <div className="text-center py-12">
               <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
